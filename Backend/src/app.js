@@ -5,6 +5,7 @@ const socketIo = require("socket.io");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const userRoutes = require("./routes/userRoutes");
 const server = http.createServer(app);
 dotenv.config({ path: "../.env" });
 
@@ -20,6 +21,10 @@ const io = socketIo(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+//routes
+
+app.use("/api/users", userRoutes);
 
 // Connect to the database
 mongoose
