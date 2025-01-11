@@ -22,28 +22,12 @@ const sendChat = expressAsyncHandler(async (req, res) => {
 
 const getChat = expressAsyncHandler(async (req, res) => {
   try {
-    const groupId = req.params.groupId;
-
-    // Log groupId to verify if it's correct
-    console.log("GroupId:", groupId);
-
-    // Ensure groupId is an ObjectId
-    const groupObjectId = new mongoose.Types.ObjectId(groupId);
-    console.log("Group ObjectId:", groupObjectId);
-
-    // Query to find messages by groupId
-    const messages = await Chat.find({ group: groupObjectId })
+    const messages = await Chat.find({ group: req.params.groupId })
       .populate("sender", "username email")
-      .populate("group", "name description");
-
-    // Log the fetched messages for debugging
-    console.log("Messages:", messages);
-
-    // Return the response with the messages
-    res.status(200).json(messages);
+      .sort({ createdAt: 1 });
+    res.json(messages);
   } catch (error) {
-    console.error("Error fetching messages:", error);
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.Message });
   }
 });
 module.exports = { sendChat, getChat };
