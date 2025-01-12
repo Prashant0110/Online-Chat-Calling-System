@@ -11,6 +11,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    hasPaidForCalling: {
+      type: Boolean,
+      default: false,
+    },
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",
