@@ -38,8 +38,10 @@ const handleStripeWebhook = async (req, res) => {
       const paymentIntent = event.data.object; // Contains `payment_intent`
       const userId = paymentIntent.metadata.userId;
 
-      // Mark the user as paid in your database (to grant access to calling features)
-      await User.updateOne({ _id: userId }, { hasPaidForCalling: true });
+      await User.updateOne(
+        { _id: userId },
+        { premiumUser: true, hasPaidForCalling: true }
+      );
 
       console.log(`Payment succeeded for user ${userId}`);
     }

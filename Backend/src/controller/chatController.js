@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
 const expressAsyncHandler = require("express-async-handler");
 const Chat = require("../models/ChatModel");
+const User = require("../models/UserModel");
 
 const sendChat = expressAsyncHandler(async (req, res) => {
   try {
@@ -30,4 +30,16 @@ const getChat = expressAsyncHandler(async (req, res) => {
     res.status(400).json({ message: error.Message });
   }
 });
-module.exports = { sendChat, getChat };
+
+// New method to check calling access
+const checkCallingAccess = expressAsyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user || !user.hasPaidForCalling) {
+    return res
+      .status(403)
+      .json({ message: "Access denied. Please pay for calling features." });
+  }
+  next();
+});
+
+module.exports = { sendChat, getChat, checkCallingAccess };

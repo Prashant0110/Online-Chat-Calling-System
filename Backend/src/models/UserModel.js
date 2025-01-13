@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -19,6 +20,14 @@ const userSchema = new mongoose.Schema(
     isAdmin: {
       type: Boolean,
       default: false,
+    },
+    hasPaidForCalling: {
+      type: Boolean,
+      default: false, // Tracks whether the user has paid for the calling feature
+    },
+    premiumUser: {
+      type: Boolean,
+      default: false, // Denotes if the user has premium access
     },
   },
   {

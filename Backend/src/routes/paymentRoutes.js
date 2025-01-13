@@ -1,9 +1,10 @@
 const express = require("express");
+
 const {
   createPaymentIntent,
   handleStripeWebhook,
-} = require("../controllers/stripeController");
-const { isAuthenticated } = require("../middlewares/authMiddleware");
+} = require("../controller/stripeController");
+const isAuthenticated = require("../middleware/isAuthenticated");
 
 const router = express.Router();
 

@@ -1,18 +1,18 @@
 const express = require("express");
-const app = express();
 const http = require("http");
 const socketIo = require("socket.io");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
-const server = http.createServer(app);
-dotenv.config({ path: "../.env" });
 const groupRoutes = require("./routes/groupRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const { ExpressPeerServer } = require("peer");
 
-// Set up Socket.io with CORS
+dotenv.config({ path: "../.env" });
+const app = express();
+const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:5173"],
@@ -21,16 +21,23 @@ const io = socketIo(server, {
   },
 });
 
+// Peer server setup
+const peerServer = ExpressPeerServer(server, {
+  path: "/peerjs",
+});
+
+app.use("/peerjs", peerServer);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-//routes
-
+// Routes
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/users", paymentRoutes);
+
 // Connect to the database
 mongoose
   .connect(process.env.MONGO_URI)

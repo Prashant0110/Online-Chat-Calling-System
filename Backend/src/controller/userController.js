@@ -1,6 +1,6 @@
 const expressAsyncHandler = require("express-async-handler");
 const User = require("../models/UserModel");
-const bycrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 //register
@@ -11,8 +11,8 @@ const registerUser = expressAsyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("User already exists");
   }
-  const salt = await bycrypt.genSalt(10);
-  const hashedPassword = await bycrypt.hash(password, salt);
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
   const user = await User.create({ username, email, password: hashedPassword });
   if (user) {
     res.status(201).json({
