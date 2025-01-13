@@ -9,6 +9,7 @@ const groupRoutes = require("./routes/groupRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const { ExpressPeerServer } = require("peer");
+const socketServer = require("./socketServer");
 
 dotenv.config({ path: "../.env" });
 const app = express();
@@ -31,6 +32,7 @@ app.use("/peerjs", peerServer);
 // Middleware
 app.use(cors());
 app.use(express.json());
+socketServer(io);
 
 // Routes
 app.use("/api/users", userRoutes);
