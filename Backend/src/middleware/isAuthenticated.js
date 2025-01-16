@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/UserModel");
+const bycrypt = require("bcryptjs");
 
 const isAuthenticated = async (req, res, next) => {
   let token;

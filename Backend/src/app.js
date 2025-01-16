@@ -22,6 +22,13 @@ const io = socketIo(server, {
   },
 });
 
+const corsOptions = {
+  origin: "http://localhost:5173", // Allow the frontend URL
+  methods: ["GET", "POST"],
+  credentials: true, // Allow cookies to be sent with requests
+};
+
+app.use(cors(corsOptions));
 // Peer server setup
 const peerServer = ExpressPeerServer(server, {
   path: "/peerjs",
@@ -38,7 +45,7 @@ socketServer(io);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/chats", chatRoutes);
-app.use("/api/users", paymentRoutes);
+// app.use("/api/users", paymentRoutes);
 
 // Connect to the database
 mongoose
