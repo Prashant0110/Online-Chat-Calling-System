@@ -7,13 +7,22 @@ const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const groupRoutes = require("./routes/groupRoutes");
 const chatRoutes = require("./routes/chatRoutes");
-const paymentRoutes = require("./routes/paymentRoutes");
 const { ExpressPeerServer } = require("peer");
 const socketServer = require("./socketServer");
 
 dotenv.config({ path: "../.env" });
+
 const app = express();
 const server = http.createServer(app);
+
+// CORS configuration
+const corsOptions = {
+  origin: "http://localhost:5173", // Allow the frontend URL
+  methods: ["GET", "POST"],
+  credentials: true, // Allow credentials
+};
+app.use(cors(corsOptions)); // Apply CORS for all routes
+
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:5173"],
@@ -22,13 +31,6 @@ const io = socketIo(server, {
   },
 });
 
-const corsOptions = {
-  origin: "http://localhost:5173", // Allow the frontend URL
-  methods: ["GET", "POST"],
-  credentials: true, // Allow cookies to be sent with requests
-};
-
-app.use(cors(corsOptions));
 // Peer server setup
 const peerServer = ExpressPeerServer(server, {
   path: "/peerjs",
@@ -37,7 +39,6 @@ const peerServer = ExpressPeerServer(server, {
 app.use("/peerjs", peerServer);
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 socketServer(io);
 
@@ -45,7 +46,6 @@ socketServer(io);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/chats", chatRoutes);
-// app.use("/api/users", paymentRoutes);
 
 // Connect to the database
 mongoose
