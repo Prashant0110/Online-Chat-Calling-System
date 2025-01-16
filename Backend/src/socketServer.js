@@ -81,4 +81,6 @@ const socketIo = (io) => {
   });
 };
 
+//completed setup for the socket server
+
 module.exports = socketIo;
