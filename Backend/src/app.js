@@ -21,7 +21,7 @@ const corsOptions = {
   methods: ["GET", "POST"],
   credentials: true, // Allow credentials
 };
-app.use(cors(corsOptions)); // Apply CORS for all routes
+app.use(cors(corsOptions));
 
 const io = socketIo(server, {
   cors: {
