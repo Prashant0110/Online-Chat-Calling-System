@@ -5,6 +5,7 @@ const {
   sendChat,
   getChat,
   checkCallingAccess,
+  initiateCall,
 } = require("../controller/chatController");
 
 const router = express.Router();
@@ -16,9 +17,7 @@ router.post(
   isAuthenticated,
   isPremiumUser,
   checkCallingAccess,
-  (req, res) => {
-    res.status(200).json({ message: "Call initiated" });
-  }
+  initiateCall
 );
 
 module.exports = router;

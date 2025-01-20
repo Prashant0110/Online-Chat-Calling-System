@@ -1,10 +1,13 @@
-const isPremiumUser = (req, res, next) => {
-  if (req.user && req.user.premiumUser) {
-    next();
-  } else {
-    res.status(403);
-    throw new Error("Access denied. Premium users only.");
+const User = require("../models/UserModel");
+
+const isPremiumUser = async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user || !user.hasPaidForCalling) {
+    return res
+      .status(403)
+      .json({ message: "Access denied. Please pay for calling features." });
   }
+  next();
 };
 
 module.exports = isPremiumUser;

@@ -1,13 +1,8 @@
 const stripe = require("stripe")(
   "sk_test_51QSHuhHCVBXe7H0jV7kWKJIzz7UIHXMlsrU9OYbYNmPWmufjlJcEMew7fL6PtBhbMX5RDAdY0HaGMxpzbdv7pn6s00oiSWfS1v"
-);
-const User = require("../models/UserModel");
+); // Your Stripe secret key
 const expressAsyncHandler = require("express-async-handler");
-// stripeController.js
-require("dotenv").config();
-console.log("Stripe Secret Key:", process.env.STRIPE_SECRET_KEY);
 
-// Handle payment intent creation (for authenticated users)
 const createPaymentIntent = expressAsyncHandler(async (req, res) => {
   try {
     const amountInCents = Number(req.body.amount) * 100; // Convert to cents
