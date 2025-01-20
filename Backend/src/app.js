@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const groupRoutes = require("./routes/groupRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 const { ExpressPeerServer } = require("peer");
 const socketServer = require("./socketServer");
 
@@ -26,8 +27,9 @@ app.use(cors(corsOptions));
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:5173"],
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   },
 });
 
@@ -46,6 +48,7 @@ socketServer(io);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Connect to the database
 mongoose
@@ -62,3 +65,5 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+module.exports = socketServer;

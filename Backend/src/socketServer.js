@@ -1,86 +1,61 @@
-const socketIo = (io) => {
-  const connectedUsers = new Map();
+const express = require("express");
+const http = require("http");
+const socketIo = require("socket.io");
 
+let users = {}; // Store user connections by groupId
+
+// Handle new connections
+const socketServer = (io) => {
   io.on("connection", (socket) => {
-    const user = socket.handshake.auth.user;
+    console.log("User connected:", socket.id);
 
-    console.log("User connected:", user?.username);
-
-    //! JOIN ROOM HANDLER
-    socket.on("join room", (groupId) => {
-      // Allow all users (premium and non-premium) to join the room for text messages
-      socket.join(groupId);
-
-      connectedUsers.set(socket.id, { user, room: groupId });
-
-      const usersInRoom = Array.from(connectedUsers.values())
-        .filter((u) => u.room === groupId)
-        .map((u) => u.user);
-
-      io.in(groupId).emit("users in room", usersInRoom);
-
-      socket.to(groupId).emit("notification", {
-        type: "USER_JOINED",
-        message: `${user?.username} has joined.`,
-        user,
-      });
-    });
-
-    //! LEAVE ROOM HANDLER
-    socket.on("leave room", (groupId) => {
-      console.log(`${user?.username} is leaving room:`, groupId);
-
-      socket.leave(groupId);
-
-      connectedUsers.delete(socket.id);
-
-      socket.to(groupId).emit("user left", user?._id);
-    });
-
-    //! WEBRTC SIGNAL HANDLER
-    socket.on("webrtc signal", ({ signal, to }) => {
-      // Restrict WebRTC signaling (audio/video calling) to premium users only
-      if (!user?.isPremium) {
-        socket.emit("notification", {
-          type: "ERROR",
-          message: "Audio/video calls are restricted to premium users.",
-        });
-        return;
+    // When a user joins a group
+    socket.on("joinGroup", (groupId) => {
+      if (!users[groupId]) {
+        users[groupId] = [];
       }
-
-      io.to(to).emit("webrtc signal", { signal, from: socket.id });
+      users[groupId].push(socket.id);
+      console.log(`User ${socket.id} joined group ${groupId}`);
     });
 
-    //! NEW MESSAGE HANDLER
-    socket.on("new message", (message) => {
-      // Allow all users to send messages
-      socket.to(message.groupId).emit("message received", message);
+    // Handle sending a message to a group
+    socket.on("sendMessage", (message) => {
+      const { groupId } = message;
+      if (users[groupId]) {
+        // Emit the message to all clients in the group
+        users[groupId].forEach((clientSocketId) => {
+          io.to(clientSocketId).emit("message", message);
+        });
+      }
     });
 
-    //! TYPING INDICATOR HANDLER
-    socket.on("typing", ({ groupId, username }) => {
-      socket.to(groupId).emit("user typing", { username });
+    // Handle typing event
+    socket.on("typing", (groupId) => {
+      if (users[groupId]) {
+        users[groupId].forEach((clientSocketId) => {
+          io.to(clientSocketId).emit("typing");
+        });
+      }
     });
 
-    socket.on("stop typing", ({ groupId }) => {
-      socket.to(groupId).emit("user stop typing", { username: user?.username });
+    // Handle stop-typing event
+    socket.on("stop-typing", (groupId) => {
+      if (users[groupId]) {
+        users[groupId].forEach((clientSocketId) => {
+          io.to(clientSocketId).emit("stop-typing");
+        });
+      }
     });
 
-    //! DISCONNECT HANDLER
+    // Handle user disconnect
     socket.on("disconnect", () => {
-      console.log(`${user?.username} disconnected.`);
-
-      if (connectedUsers.has(socket.id)) {
-        const { room } = connectedUsers.get(socket.id);
-
-        socket.to(room).emit("user left", user?._id);
-
-        connectedUsers.delete(socket.id);
+      console.log("User disconnected:", socket.id);
+      // Remove the user from all groups
+      for (let groupId in users) {
+        users[groupId] = users[groupId].filter((id) => id !== socket.id);
       }
     });
   });
 };
 
-//completed setup for the socket server
-
-module.exports = socketIo;
+module.exports = socketServer;
