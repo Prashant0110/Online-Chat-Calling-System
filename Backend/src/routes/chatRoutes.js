@@ -15,8 +15,8 @@ router.get("/getchat/:groupId", isAuthenticated, getChat);
 router.post(
   "/call",
   isAuthenticated,
-  isPremiumUser,
-  checkCallingAccess,
+  // isPremiumUser,
+  // checkCallingAccess,
   initiateCall
 );
 

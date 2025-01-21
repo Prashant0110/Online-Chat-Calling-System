@@ -1,56 +1,69 @@
+const expressAsyncHandler = require("express-async-handler");
 const stripe = require("stripe")(
   "sk_test_51QSHuhHCVBXe7H0jV7kWKJIzz7UIHXMlsrU9OYbYNmPWmufjlJcEMew7fL6PtBhbMX5RDAdY0HaGMxpzbdv7pn6s00oiSWfS1v"
-); // Your Stripe secret key
-const expressAsyncHandler = require("express-async-handler");
+);
 
-const createPaymentIntent = expressAsyncHandler(async (req, res) => {
+// Create a Checkout Session
+const createCheckoutSession = expressAsyncHandler(async (req, res) => {
   try {
-    const amountInCents = Number(req.body.amount) * 100; // Convert to cents
-
-    // Create a Payment Intent on Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
-      currency: "usd",
-      metadata: { userId: req.user._id },
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Premium Account",
+            },
+            unit_amount: 1000, // $10.00 in cents
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: "http://localhost:3000/success",
+      cancel_url: "http://localhost:3000/cancel",
     });
 
-    // Return the client secret to the frontend for payment confirmation
-    res.status(200).json({
-      clientSecret: paymentIntent.client_secret,
-    });
+    res.status(200).json({ sessionId: session.id });
   } catch (error) {
+    console.error("Error creating checkout session:", error.message);
     res.status(500).json({ message: error.message });
   }
 });
 
-// Handle Stripe webhook to listen for payment success
-const handleStripeWebhook = async (req, res) => {
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Webhook to handle Stripe events
+const bodyParser = require("body-parser");
+
+const handleStripeWebhook = expressAsyncHandler(async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  let event;
-
   try {
-    // Construct the event from the Stripe webhook signature
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    const event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      "whsec_m0avefdGpCgJu1RIUKX5ZhSZPhQvQNeY"
+    );
 
-    // Handle the payment_intent.succeeded event
-    if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object; // Contains `payment_intent`
-      const userId = paymentIntent.metadata.userId;
-
-      await User.updateOne(
-        { _id: userId },
-        { premiumUser: true, hasPaidForCalling: true }
-      );
-
-      console.log(`Payment succeeded for user ${userId}`);
+    // Handle the event (e.g., checkout.session.completed)
+    switch (event.type) {
+      case "checkout.session.completed":
+        const session = event.data.object;
+        // Handle successful checkout session here (e.g., update user status)
+        console.log("Checkout session completed:", session);
+        break;
+      // Add more cases for other event types if needed
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
-    // Return a success response to Stripe
     res.status(200).json({ received: true });
-  } catch (error) {
-    res.status(400).send(`Webhook error: ${error.message}`);
+  } catch (err) {
+    console.error("Webhook Error:", err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
   }
-};
+});
 
-module.exports = { createPaymentIntent, handleStripeWebhook };
+module.exports = {
+  createCheckoutSession,
+  handleStripeWebhook,
+};

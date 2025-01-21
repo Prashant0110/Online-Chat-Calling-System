@@ -10,7 +10,7 @@ const isAuthenticated = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      console.log("Token:", token); // Log the token
+      console.log("Token:", token);
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded:", decoded); // Log the decoded token
@@ -19,14 +19,10 @@ const isAuthenticated = async (req, res, next) => {
       next();
     } catch (error) {
       console.error("JWT Error:", error);
-      res.status(401);
-      throw new Error("Not authorized, token failed");
+      res.status(401).json({ message: "Not authorized, token failed" });
     }
-  }
-
-  if (!token) {
-    res.status(401);
-    throw new Error("Not authorized, no token");
+  } else {
+    res.status(401).json({ message: "Not authorized, no token" });
   }
 };
 

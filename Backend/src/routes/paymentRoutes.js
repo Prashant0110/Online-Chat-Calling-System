@@ -1,14 +1,14 @@
 const express = require("express");
 const isAuthenticated = require("../middleware/isAuthenticated");
 const {
-  createPaymentIntent,
+  createCheckoutSession,
   handleStripeWebhook,
 } = require("../controller/stripeController");
 
 const router = express.Router();
 
-// Route for creating a payment intent (requires authentication)
-router.post("/create-payment-intent", isAuthenticated, createPaymentIntent);
+// Ensure the user is authenticated before creating a checkout session
+router.post("/create-checkout-session", isAuthenticated, createCheckoutSession);
 
 // Route for Stripe webhook to handle payment success
 router.post(
