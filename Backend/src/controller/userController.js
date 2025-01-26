@@ -59,4 +59,5 @@ const loginUser = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// Export the functions
 module.exports = { registerUser, loginUser };
