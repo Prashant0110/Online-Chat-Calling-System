@@ -1,119 +1,147 @@
+require("dotenv").config();
 const expressAsyncHandler = require("express-async-handler");
-const Group = require("../models/GroupModel");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/UserModel");
+const Group = require("../models/GroupModel");
 
-// Create a new group
-const createGroup = expressAsyncHandler(async (req, res) => {
+// Create Checkout Session
+const createCheckoutSession = expressAsyncHandler(async (req, res) => {
   try {
-    const { name, description } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: "Group name is required" });
-    }
-
-    const group = await Group.create({
-      name,
-      description,
-      admin: req.user._id,
-      members: [req.user._id],
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Premium Account" },
+            unit_amount: 1000,
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${process.env.CLIENT_URL}/success`,
+      cancel_url: `${process.env.CLIENT_URL}/cancel`,
     });
 
-    const groupDetails = await Group.findById(group._id)
-      .populate("admin", "username email")
-      .populate("members", "username email");
-
-    res.status(201).json(groupDetails);
+    res.status(200).json({ sessionId: session.id });
   } catch (error) {
-    res.status(500).json({ message: error.message, stack: error.stack });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Get all groups and include membership status for the current user
+// Handle Stripe Webhook
+const handleStripeWebhook = expressAsyncHandler(async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+
+      // Update user's premium status
+      await User.findByIdAndUpdate(
+        session.client_reference_id, // Make sure to send user ID in checkout session
+        { hasPaidForCalling: true },
+        { new: true }
+      );
+    }
+
+    res.status(200).json({ received: true });
+  } catch (err) {
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
+// Create Group
+const createGroup = expressAsyncHandler(async (req, res) => {
+  const { name, description, members } = req.body; // Assuming these fields are sent in the request body
+
+  const group = await Group.create({
+    name,
+    description,
+    members, // This could be an array of user IDs
+  });
+
+  res.status(201).json(group);
+});
+
+// Get Group
 const getGroup = expressAsyncHandler(async (req, res) => {
-  try {
-    const groups = await Group.find()
-      .populate("admin", "username email")
-      .populate("members", "username email");
+  const { id } = req.params; // Assuming the group ID is passed as a URL parameter
 
-    const userId = req.user._id.toString();
-    const groupsWithMembershipStatus = groups.map((group) => ({
-      ...group.toObject(),
-      isJoined: group.members.some(
-        (member) => member._id.toString() === userId
-      ),
-    }));
-
-    res.json(groupsWithMembershipStatus);
-  } catch (error) {
-    res.status(500).json({ message: error.message, stack: error.stack });
+  const group = await Group.findById(id);
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
   }
+
+  res.status(200).json(group);
 });
 
-// Join a group
+// Get Groups
+const getGroups = expressAsyncHandler(async (req, res) => {
+  const groups = await Group.find(); // Fetch all groups
+  res.status(200).json(groups);
+});
+
+// Join Group
 const joinGroup = expressAsyncHandler(async (req, res) => {
-  try {
-    const group = await Group.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: "Group not found" });
-    }
+  const { id } = req.params; // Group ID from the URL
+  const userId = req.user._id; // User ID from the authenticated user
 
-    if (
-      group.members.some(
-        (member) => member.toString() === req.user._id.toString()
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "You are already a member of this group" });
-    }
-
-    group.members.push(req.user._id);
-    await group.save();
-
-    const updatedGroup = await Group.findById(group._id)
-      .populate("admin", "username email")
-      .populate("members", "username email");
-
-    res.status(200).json(updatedGroup);
-  } catch (error) {
-    res.status(500).json({ message: error.message, stack: error.stack });
+  const group = await Group.findById(id);
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
   }
+
+  // Check if the user is already a member
+  if (group.members.includes(userId)) {
+    return res
+      .status(400)
+      .json({ message: "User is already a member of this group" });
+  }
+
+  // Add user to the group members
+  group.members.push(userId);
+  await group.save();
+
+  res.status(200).json({ message: "User added to group", group });
 });
 
-// Leave a group
+// Leave Group
 const leaveGroup = expressAsyncHandler(async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "User not authenticated" });
+  const { id } = req.params; // Group ID from the URL
+  const userId = req.user._id; // User ID from the authenticated user
+
+  const group = await Group.findById(id);
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
   }
 
-  try {
-    const group = await Group.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    if (
-      !group.members.some(
-        (member) => member.toString() === req.user._id.toString()
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "You are not a member of this group" });
-    }
-
-    group.members = group.members.filter(
-      (member) => member.toString() !== req.user._id.toString()
-    );
-
-    await group.save();
-
-    const updatedGroup = await Group.findById(group._id)
-      .populate("admin", "username email")
-      .populate("members", "username email");
-
-    res.status(200).json(updatedGroup);
-  } catch (error) {
-    res.status(500).json({ message: error.message, stack: error.stack });
+  // Check if the user is a member
+  if (!group.members.includes(userId)) {
+    return res
+      .status(400)
+      .json({ message: "User is not a member of this group" });
   }
+
+  // Remove user from the group members
+  group.members = group.members.filter(
+    (member) => member.toString() !== userId.toString()
+  );
+  await group.save();
+
+  res.status(200).json({ message: "User removed from group", group });
 });
-module.exports = { createGroup, getGroup, joinGroup, leaveGroup };
+
+module.exports = {
+  createCheckoutSession,
+  handleStripeWebhook,
+  createGroup,
+  getGroup,
+  getGroups,
+  joinGroup,
+  leaveGroup,
+};

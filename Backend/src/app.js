@@ -11,7 +11,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const { ExpressPeerServer } = require("peer");
 const socketServer = require("./socketServer");
 
-dotenv.config({ path: "../.env" });
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -24,6 +24,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Socket.io setup
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:5173"],

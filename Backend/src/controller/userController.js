@@ -1,7 +1,13 @@
+require("dotenv").config();
+
 const expressAsyncHandler = require("express-async-handler");
 const User = require("../models/UserModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const Stripe = require("stripe");
+
+// Initialize Stripe with your secret key
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Register User
 const registerUser = expressAsyncHandler(async (req, res) => {
