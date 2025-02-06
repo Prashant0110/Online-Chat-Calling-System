@@ -4,24 +4,18 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/UserModel");
 const Group = require("../models/GroupModel");
 
+// Log the CLIENT_URL
+console.log("CLIENT_URL:", process.env.CLIENT_URL);
+
 // Create Checkout Session
 const createCheckoutSession = expressAsyncHandler(async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: "Premium Account" },
-            unit_amount: 1000,
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.CLIENT_URL}/success`,
-      cancel_url: `${process.env.CLIENT_URL}/cancel`,
+      line_items: req.body.line_items,
+      success_url: req.body.success_url || `${process.env.CLIENT_URL}/success`,
+      cancel_url: req.body.cancel_url || `${process.env.CLIENT_URL}/cancel`,
     });
 
     res.status(200).json({ sessionId: session.id });
@@ -57,12 +51,12 @@ const handleStripeWebhook = expressAsyncHandler(async (req, res) => {
 
 // Create Group
 const createGroup = expressAsyncHandler(async (req, res) => {
-  const { name, description, members } = req.body; // Assuming these fields are sent in the request body
+  const { name, description, members } = req.body;
 
   const group = await Group.create({
     name,
     description,
-    members, // This could be an array of user IDs
+    members,
   });
 
   res.status(201).json(group);
@@ -70,7 +64,7 @@ const createGroup = expressAsyncHandler(async (req, res) => {
 
 // Get Group
 const getGroup = expressAsyncHandler(async (req, res) => {
-  const { id } = req.params; // Assuming the group ID is passed as a URL parameter
+  const { id } = req.params;
 
   const group = await Group.findById(id);
   if (!group) {

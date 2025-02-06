@@ -18,51 +18,43 @@ const server = http.createServer(app);
 
 // CORS configuration
 const corsOptions = {
-  origin: "http://localhost:5173", // Allow the frontend URL
-  methods: ["GET", "POST"],
-  credentials: true, // Allow credentials
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
 };
 app.use(cors(corsOptions));
 
+app.use(express.json());
+
 // Socket.io setup
 const io = socketIo(server, {
-  cors: {
-    origin: ["http://localhost:5173"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  },
+  cors: corsOptions,
 });
+socketServer(io);
 
 // Peer server setup
 const peerServer = ExpressPeerServer(server, {
   path: "/peerjs",
 });
-
 app.use("/peerjs", peerServer);
 
-// Middleware
-app.use(express.json());
-socketServer(io);
+// ✅ Apply express.raw() **ONLY for Stripe Webhook**
+app.use("/api/payments", express.raw({ type: "application/json" }));
 
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/chats", chatRoutes);
-app.use("/api/payment", paymentRoutes);
+app.use("/api/payments", paymentRoutes); // ✅ Fixed
 
-// Connect to the database
+// Database connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.log("Database connection error:", err);
-  });
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// Start the server
-const PORT = process.env.PORT || 5000;
+// Start server
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
