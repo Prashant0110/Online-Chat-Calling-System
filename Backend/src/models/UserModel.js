@@ -1,39 +1,15 @@
 const mongoose = require("mongoose");
-
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true,
-    },
-    password: {
-      type: String,
-      required: true,
-    },
-    isAdmin: {
-      type: Boolean,
-      default: false,
-    },
-    hasPaidForCalling: {
-      type: Boolean,
-      default: false, // Tracks whether the user has paid for the calling feature
-    },
-    premiumUser: {
-      type: Boolean,
-      default: false, // Denotes if the user has premium access
-    },
+    username: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true, lowercase: true },
+    password: { type: String, required: true },
+    isAdmin: { type: Boolean, default: false },
+    hasPaidForCalling: { type: Boolean, default: false },
+    isPremium: { type: Boolean, default: false },
+    groups: [{ type: mongoose.Schema.Types.ObjectId, ref: "Group" }],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

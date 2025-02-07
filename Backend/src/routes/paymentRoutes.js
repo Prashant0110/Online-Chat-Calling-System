@@ -8,12 +8,9 @@ const {
 
 router.post("/create-checkout-session", isAuthenticated, createCheckoutSession);
 
-router.post("/webhook", handleStripeWebhook);
-
 router.get("/success", (req, res) => {
-  const sessionId = req.query.session_id;
   res.redirect(
-    `${process.env.CLIENT_URL}/payment/success?session_id=${sessionId}`
+    `${process.env.CLIENT_URL}/payment/success?session_id=${req.query.session_id}`
   );
 });
 

@@ -1,9 +1,21 @@
-const expressAsyncHandler = require("express-async-handler");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/UserModel");
 
-const createCheckoutSession = expressAsyncHandler(async (req, res) => {
+const createCheckoutSession = async (req, res) => {
   try {
+    if (!req.user || !req.user._id) {
+      return res.status(400).json({ error: "User not authenticated" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    if (user.isPremium) {
+      return res.status(400).json({ error: "User already has premium access" });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -15,17 +27,13 @@ const createCheckoutSession = expressAsyncHandler(async (req, res) => {
               name: "Premium Calling Access",
               description: "Unlimited voice and video calling features",
             },
-            unit_amount: 1000, // $10.00
+            unit_amount: 1000,
           },
           quantity: 1,
         },
       ],
       success_url: `${process.env.CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/payment/cancel`,
-      metadata: {
-        userId: req.user._id.toString(),
-        email: req.user.email,
-      },
       client_reference_id: req.user._id.toString(),
     });
 
@@ -34,43 +42,47 @@ const createCheckoutSession = expressAsyncHandler(async (req, res) => {
     console.error("Error creating checkout session:", error);
     res.status(500).json({ error: "Error creating checkout session" });
   }
-});
+};
 
-const handleStripeWebhook = expressAsyncHandler(async (req, res) => {
+const handleStripeWebhook = async (req, res) => {
+  console.log("Received webhook request:", req.body); // Log the body of the request
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  let event;
   try {
-    const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-    // Handle the checkout.session.completed event
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    console.log("Checkout session completed:", session);
 
-      // Check if the payment was successful
-      if (session.payment_status === "paid") {
-        const userId = session.client_reference_id;
-
-        if (userId) {
-          // Find the user and update the `isPremium` field
-          const user = await User.findById(userId);
-          if (user) {
-            user.isPremium = true; // Update isPremium to true
-            await user.save(); // Save the updated user object
-            console.log(`User ${userId} upgraded to premium.`);
-          } else {
-            console.log(`User with ID ${userId} not found.`);
-          }
+    // Add your logic to handle successful payment here
+    if (session.payment_status === "paid") {
+      try {
+        const user = await User.findById(session.client_reference_id);
+        if (user) {
+          await User.findByIdAndUpdate(session.client_reference_id, {
+            isPremium: true,
+            hasPaidForCalling: true,
+          });
+        } else {
+          console.error(
+            "User not found for client_reference_id:",
+            session.client_reference_id
+          );
         }
+      } catch (error) {
+        console.error(`Error updating user: ${error.message}`);
       }
     }
-
-    // Acknowledge receipt of the event
-    res.status(200).json({ received: true });
-  } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
-    res.status(400).send(`Webhook Error: ${err.message}`);
   }
-});
+
+  res.status(200).json({ received: true });
+};
 
 module.exports = { createCheckoutSession, handleStripeWebhook };
