@@ -1,53 +1,6 @@
-require("dotenv").config();
 const expressAsyncHandler = require("express-async-handler");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/UserModel");
 const Group = require("../models/GroupModel");
-
-// Log the CLIENT_URL
-console.log("CLIENT_URL:", process.env.CLIENT_URL);
-
-// Create Checkout Session
-const createCheckoutSession = expressAsyncHandler(async (req, res) => {
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: req.body.line_items,
-      success_url: req.body.success_url || `${process.env.CLIENT_URL}/success`,
-      cancel_url: req.body.cancel_url || `${process.env.CLIENT_URL}/cancel`,
-    });
-
-    res.status(200).json({ sessionId: session.id });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Handle Stripe Webhook
-const handleStripeWebhook = expressAsyncHandler(async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  try {
-    const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
-
-      // Update user's premium status
-      await User.findByIdAndUpdate(
-        session.client_reference_id, // Make sure to send user ID in checkout session
-        { hasPaidForCalling: true },
-        { new: true }
-      );
-    }
-
-    res.status(200).json({ received: true });
-  } catch (err) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-});
 
 // Create Group
 const createGroup = expressAsyncHandler(async (req, res) => {
@@ -131,8 +84,6 @@ const leaveGroup = expressAsyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  createCheckoutSession,
-  handleStripeWebhook,
   createGroup,
   getGroup,
   getGroups,

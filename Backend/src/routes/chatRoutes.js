@@ -9,6 +9,7 @@ const {
   getChat,
   // initiateCall,
 } = require("../controller/chatController");
+const { initiateCall } = require("../controller/callController");
 const router = express.Router();
 
 // Chat Message Routes
@@ -18,10 +19,10 @@ router.get("/getchat/:groupId", isAuthenticated, getChat);
 // Calling Feature Routes
 router.post(
   "/call",
-  isAuthenticated, // First check authentication
-  isPremiumUser, // Then check premium status
-  checkCallingAccess // Then verify payment for calling
-  // initiateCall // Finally initiate Stripe payment if needed
+  isAuthenticated,
+  isPremiumUser,
+  checkCallingAccess,
+  initiateCall
 );
 
 module.exports = router;
