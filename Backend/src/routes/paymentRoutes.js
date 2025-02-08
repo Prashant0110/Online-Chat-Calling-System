@@ -3,7 +3,7 @@ const router = express.Router();
 const isAuthenticated = require("../middleware/isAuthenticated");
 const {
   createCheckoutSession,
-  handleStripeWebhook,
+ 
 } = require("../controller/stripeController");
 
 router.post("/create-checkout-session", isAuthenticated, createCheckoutSession);

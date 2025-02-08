@@ -45,7 +45,7 @@ const createCheckoutSession = async (req, res) => {
 };
 
 const handleStripeWebhook = async (req, res) => {
-  console.log("Received webhook request:", req.body); // Log the body of the request
+  console.log("Received webhook request:", req.body); 
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
